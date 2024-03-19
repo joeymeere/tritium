@@ -1,9 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar;
 use anchor_spl::{
-    token::{Mint, TokenAccount, Token}, 
-    metadata::{MetadataAccount, Metadata, MasterEditionAccount, mpl_token_metadata::instructions::TransferV1CpiBuilder, TokenRecordAccount},
-    associated_token::AssociatedToken,
+    associated_token::AssociatedToken, metadata::{mpl_token_metadata::instructions::TransferV1CpiBuilder, MasterEditionAccount, Metadata, MetadataAccount, TokenRecordAccount}, token::{self, Mint, Token, TokenAccount}
 };
 
 use crate::Sponsor;
@@ -49,6 +47,22 @@ pub fn swap_nft_to_token<'info>(
 
         transfer_cpi.invoke()?;
 
+        const PREFIX_SEED: &'static [u8] = b"hybrid_defi";
+        let signer_seeds = [PREFIX_SEED, sponsor.authority.as_ref(), sponsor.nft_mint.as_ref(), &[sponsor.auth_rules_bump]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.sponsor_token_account.to_account_info(),
+                    to: ctx.accounts.payer_token_account.to_account_info(),
+                    authority: sponsor.to_account_info(),
+                },
+                &[&signer_seeds]
+        ),
+        sponsor.swap_factor,
+    )?;
+
     Ok(())
 }
 
@@ -64,6 +78,21 @@ pub struct SwapNFTToToken<'info> {
         bump = sponsor.bump
     )]
     pub sponsor: Account<'info, Sponsor>,
+
+    #[account(mut)]
+    pub token_mint: Account<'info, token::Mint>,
+    #[account(
+        mut,
+        token::mint = sponsor.token_mint,
+        token::authority = sponsor,
+    )]
+    pub sponsor_token_account: Account<'info, token::TokenAccount>,
+    #[account(
+        mut,
+        token::mint = sponsor.token_mint,
+        token::authority = payer,
+    )]
+    pub payer_token_account: Account<'info, token::TokenAccount>,
 
     #[account(mint::decimals = 0, constraint = nft_mint.supply == 1)]
     pub nft_mint: Account<'info, Mint>,

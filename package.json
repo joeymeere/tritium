@@ -8,7 +8,8 @@
         "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
         "@metaplex-foundation/mpl-toolbox": "^0.9.4",
         "@metaplex-foundation/umi": "^0.9.1",
-        "@metaplex-foundation/umi-bundle-defaults": "^0.9.1"
+        "@metaplex-foundation/umi-bundle-defaults": "^0.9.1",
+        "@solana/spl-token": "^0.4.1"
     },
     "devDependencies": {
         "@types/bn.js": "^5.1.0",
