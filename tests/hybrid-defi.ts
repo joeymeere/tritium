@@ -5,6 +5,7 @@ import { Program } from "@coral-xyz/anchor";
 import { HybridDefi } from "../target/types/hybrid_defi";
 import { utf8 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import {
+  Signer,
   createSignerFromKeypair,
   generateSigner,
   percentAmount,
@@ -28,16 +29,20 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   createMint,
   getAssociatedTokenAddressSync,
+  mintTo,
 } from "@solana/spl-token";
 import { SPL_SYSTEM_PROGRAM_ID, SPL_TOKEN_PROGRAM_ID, findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
+import { assert } from "chai";
 
-describe("hybrid-defi", () => {
+describe("hybrid-defi", async () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const connection = new anchor.web3.Connection(anchor.web3.clusterApiUrl("devnet"));
+  const connection = new anchor.web3.Connection(anchor.web3.clusterApiUrl());
 
   const program = anchor.workspace.HybridDefi as Program<HybridDefi>;
+
+  console.log(connection);
 
   const umi = createUmi(anchor.AnchorProvider.env().connection.rpcEndpoint).use(
     mplTokenMetadata()
@@ -52,6 +57,7 @@ describe("hybrid-defi", () => {
    const signer = umi.eddsa.createKeypairFromSecretKey(
     new Uint8Array(keyFileContents)
   );
+
   umi.use(signerIdentity(createSignerFromKeypair(umi, signer)));
 
   const tokenProgram = new anchor.web3.PublicKey(SPL_TOKEN_PROGRAM_ID);
@@ -88,17 +94,13 @@ describe("hybrid-defi", () => {
   const nftEdition = findMasterEditionPda(umi, { mint: nftMint.publicKey });
   const nftEditionPubkey = new anchor.web3.PublicKey(publicKey(nftEdition));
 
-  const [poolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      anchor.utils.bytes.utf8.encode("cercols_pool"),
-      collectionMintPubkey.toBuffer(),
-      program.provider.publicKey.toBytes(),
-    ],
-    program.programId
-  );
+  const [sponsorPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [utf8.encode("hybrid_sponsor"), program.provider.publicKey.toBuffer(), collectionMintPubkey.toBuffer()],
+        program.programId
+    );
 
   const [nftAuthorityPda] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("nft_authority"), poolPda.toBytes()],
+    [anchor.utils.bytes.utf8.encode("nft_authority"), sponsorPDA.toBuffer()],
     program.programId
   );
 
@@ -177,9 +179,13 @@ describe("hybrid-defi", () => {
       6
     );
 
-    const [sponsorPDA, bump] = await anchor.web3.PublicKey.findProgramAddressSync(
-        [utf8.encode("hybrid_sponsor"), payer.publicKey.toBuffer(), ],
-        program.programId
+    await mintTo(
+      anchor.AnchorProvider.env().connection,
+      payer,
+      tokenMint,
+      payer.publicKey,
+      payer.publicKey,
+      1000
     );
 
     const tx = await program.methods.initializeSponsorPool(
@@ -194,5 +200,7 @@ describe("hybrid-defi", () => {
       systemProgram: systemProgram
     }).rpc();
     console.log("Your transaction signature", tx);
+
+    assert.exists(tx);
   });
 });
