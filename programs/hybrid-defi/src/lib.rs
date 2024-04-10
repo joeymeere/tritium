@@ -34,4 +34,11 @@ pub mod hybrid_defi {
     ) -> Result<()> {
         instructions::swap_nft_to_token(ctx)
     }
+
+    pub fn swap_token_to_nft(
+        ctx: Context<SwapTokenToNFT>,
+        amount: u64
+    ) -> Result<()> {
+        instructions::swap_token_to_nft(ctx, amount)
+    }
 }

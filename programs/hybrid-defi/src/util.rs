@@ -1,3 +1,5 @@
+pub const FEE_WALLETS: [&'static str; 3] = ["EYNsuoUh4pRCpuNqj5cH8zUDXST4o8YYqRg6vraG7Br7", "5ZnZRLxJZo6MiUBvfNQaB6aFSjNx5sv3Zib2YHHEeGQv", "ghosnnrbJRNUueziNL579JZCqvcLpdHSMXU2zn9uGJS"];
+
 /* 
 use std::collections::HashMap;
 

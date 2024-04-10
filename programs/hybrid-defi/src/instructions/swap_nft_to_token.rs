@@ -1,8 +1,11 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 use anchor_lang::solana_program::sysvar;
 use anchor_spl::{
     associated_token::AssociatedToken, metadata::{mpl_token_metadata::instructions::TransferV1CpiBuilder, MasterEditionAccount, Metadata, MetadataAccount, TokenRecordAccount}, token::{self, Mint, Token, TokenAccount}
 };
+
+use crate::util::FEE_WALLETS;
 
 use crate::Sponsor;
 
@@ -50,18 +53,83 @@ pub fn swap_nft_to_token<'info>(
         const PREFIX_SEED: &'static [u8] = b"hybrid_defi";
         let signer_seeds = [PREFIX_SEED, sponsor.authority.as_ref(), sponsor.nft_mint.as_ref(), &[sponsor.auth_rules_bump]];
 
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                token::Transfer {
-                    from: ctx.accounts.sponsor_token_account.to_account_info(),
-                    to: ctx.accounts.payer_token_account.to_account_info(),
-                    authority: sponsor.to_account_info(),
+        let mut symbol_iter = ctx.accounts.nft_metadata.symbol.chars();
+
+        let factor = sponsor.swap_factor as f64;
+
+        match symbol_iter.nth(2) {
+            Some('C') => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        sponsor.swap_factor,
+                    )?,
+            Some('R') => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        (factor * 1.5 as f64) as u64,
+                    )?,
+            Some('L') => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        sponsor.swap_factor * 2,
+                    )?,
+            None => panic!("Symbol did not match any defined schema."),
+            _ => panic!("An unexpected error occurred.")
+        };
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: ctx.accounts.fee_wallet.to_account_info(),
                 },
-                &[&signer_seeds]
-        ),
-        sponsor.swap_factor,
-    )?;
+            ),
+            150000,
+        )?;  
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: ctx.accounts.fee_wallet_two.to_account_info(),
+                },
+            ),
+            150000,
+        )?;  
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: ctx.accounts.fee_wallet_three.to_account_info(),
+                },
+            ),
+            300000,
+        )?;  
 
     Ok(())
 }
@@ -167,6 +235,24 @@ pub struct SwapNFTToToken<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = fee_wallet.key().to_string().as_str() == FEE_WALLETS[0]
+    )]
+    pub fee_wallet: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        constraint = fee_wallet_two.key().to_string().as_str() == FEE_WALLETS[1]
+    )]
+    pub fee_wallet_two: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        constraint = fee_wallet_three.key().to_string().as_str() == FEE_WALLETS[2]
+    )]
+    pub fee_wallet_three: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,
     pub metadata_program: Program<'info, Metadata>,

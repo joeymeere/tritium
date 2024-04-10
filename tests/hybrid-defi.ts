@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { readFileSync } from "fs";
 import path from "path";
+import { SystemProgram } from "@solana/web3.js";
 import { Program } from "@coral-xyz/anchor";
 import { HybridDefi } from "../target/types/hybrid_defi";
 import { utf8 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
@@ -36,6 +37,7 @@ import { assert } from "chai";
 
 describe("hybrid-defi", async () => {
   // Configure the client to use the local cluster.
+  const provider = anchor.AnchorProvider.env();
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const connection = new anchor.web3.Connection(anchor.web3.clusterApiUrl());
@@ -163,6 +165,56 @@ describe("hybrid-defi", async () => {
       collectionMint: collectionMint.publicKey,
       authority: umi.payer,
     }).sendAndConfirm(umi);
+  });
+
+  let payer = provider.wallet.publicKey;
+
+    const tokenMint = await createMint(
+      anchor.AnchorProvider.env().connection,
+      provider.wallet,
+      payer,
+      payer,
+      6
+    );
+
+    await mintTo(
+      anchor.AnchorProvider.env().connection,
+      payer,
+      tokenMint,
+      payer.publicKey,
+      payer.publicKey,
+      1000
+    );
+
+    const tx = await program.methods.initializeSponsorPool(
+      tokenMint,
+      nftMintPubkey,
+      new anchor.BN(1000),
+    ).accounts({
+      hybridVault: sponsorPDA,
+      collectionMint: collectionMintPubkey,
+      nftAuthority: nftAuthorityPda,
+      payer: payer.publicKey,
+      systemProgram: systemProgram
+    }).rpc();
+    console.log("Your transaction signature", tx);
+
+  it("Swap NFT to Token", async () => {
+    const tx = await program.methods.swapNftToToken().accounts({
+      sponsor: sponsorPDA,
+      nftToken: nftTokenPubkey,
+      nftMint: nftMint[0],
+      nftMetadata: nftMetadata[0],
+      nftAuthority: nftAuthorityPda,
+      nftCustody: nftCustody,
+      nftEdition: nftEditionPubkey,
+      payer: payer.publicKey,
+      systemProgram: systemProgram,
+      tokenProgram: tokenProgram,
+    }).rpc();
+    console.log("Your transaction signature", tx);
+
+    assert.exists(tx);
   });
 
   it("Create Mint & Init Sponsor", async () => {
