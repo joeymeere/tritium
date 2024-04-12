@@ -6,7 +6,7 @@ pub struct Sponsor {
     pub nft_mint: Pubkey,
     pub token_mint: Pubkey,
     pub nfts_held: u64,
-    pub swap_factor: u64,
+    pub swap_factor: [u64; 3], // [ 1 (Baseline), 2 (Rare Multiplier), 3 (Legendary Multiplier) ]
     pub auth_rules_bump: u8,
     pub bump: u8,
     pub lamport_fee: u64,
@@ -28,7 +28,7 @@ impl Sponsor {
         + 4                         // Enum (Singleton)
         + 250;                      // Padding
     
-    pub fn new(authority: Pubkey, nft_mint: Pubkey, token_mint: Pubkey, swap_factor: u64, auth_rules_bump: u8, bump: u8, lamport_fee: u64) -> Result<Self> {
+    pub fn new(authority: Pubkey, nft_mint: Pubkey, token_mint: Pubkey, swap_factor: [u64; 3], auth_rules_bump: u8, bump: u8, lamport_fee: u64) -> Result<Self> {
         Ok(Self {
             authority,
             nft_mint,

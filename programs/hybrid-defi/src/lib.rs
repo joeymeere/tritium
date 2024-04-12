@@ -17,7 +17,7 @@ pub mod hybrid_defi {
 
     pub fn initialize_sponsor_pool(
         ctx: Context<InitSponsor>, 
-        swap_factor: u64, 
+        swap_factor: [u64; 3], 
         initial_balance: u64,
         lamport_fee: u64,
     ) -> Result<()> {

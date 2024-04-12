@@ -7,7 +7,7 @@ use crate::state::Sponsor;
 // initial tokens into the vault.
 pub fn init_sponsor_pool(
     ctx: Context<InitSponsor>,
-    swap_factor: u64,
+    swap_factor: [u64; 3],
     initial_balance: u64,
     lamport_fee: u64,
 ) -> Result<()> {

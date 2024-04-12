@@ -15,7 +15,7 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: u64) -> Result<()
     let sponsor = &mut ctx.accounts.sponsor;
         sponsor.nfts_held = sponsor.nfts_held.checked_sub(1).unwrap();
 
-        require!(amount == sponsor.swap_factor, HybridErrorCode::InsufficientTokens);
+        require!(amount == sponsor.swap_factor[0], HybridErrorCode::InsufficientTokens);
 
         let mut transfer_cpi = TransferV1CpiBuilder::new(&ctx.accounts.metadata_program);
 

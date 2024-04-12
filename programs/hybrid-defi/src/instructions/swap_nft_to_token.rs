@@ -55,7 +55,7 @@ pub fn swap_nft_to_token<'info>(
 
         let mut symbol_iter = ctx.accounts.nft_metadata.symbol.chars();
 
-        let factor = sponsor.swap_factor as f64;
+        let factor = sponsor.swap_factor[0] as f64;
 
         match symbol_iter.nth(2) {
             Some('C') => token::transfer(
@@ -68,7 +68,7 @@ pub fn swap_nft_to_token<'info>(
                             },
                             &[&signer_seeds]
                         ),
-                        sponsor.swap_factor,
+                        sponsor.swap_factor[0],
                     )?,
             Some('R') => token::transfer(
                         CpiContext::new_with_signer(
@@ -80,7 +80,7 @@ pub fn swap_nft_to_token<'info>(
                             },
                             &[&signer_seeds]
                         ),
-                        (factor * 1.5 as f64) as u64,
+                        (factor * sponsor.swap_factor[1] as f64) as u64,
                     )?,
             Some('L') => token::transfer(
                         CpiContext::new_with_signer(
@@ -92,7 +92,7 @@ pub fn swap_nft_to_token<'info>(
                             },
                             &[&signer_seeds]
                         ),
-                        sponsor.swap_factor * 2,
+                        (factor * sponsor.swap_factor[2] as f64) as u64,
                     )?,
             None => panic!("Symbol did not match any defined schema."),
             _ => panic!("An unexpected error occurred.")
