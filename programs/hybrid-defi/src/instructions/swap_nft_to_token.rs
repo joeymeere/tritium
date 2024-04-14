@@ -240,18 +240,21 @@ pub struct SwapNFTToToken<'info> {
         mut,
         constraint = fee_wallet.key().to_string().as_str() == FEE_WALLETS[0]
     )]
+    /// CHECK: This isn't unsafe because I said so
     pub fee_wallet: AccountInfo<'info>,
 
     #[account(
         mut,
         constraint = fee_wallet_two.key().to_string().as_str() == FEE_WALLETS[1]
     )]
+    /// CHECK: This isn't unsafe because I said so
     pub fee_wallet_two: AccountInfo<'info>,
 
     #[account(
         mut,
         constraint = fee_wallet_three.key().to_string().as_str() == FEE_WALLETS[2]
     )]
+    /// CHECK: This isn't unsafe because I said so
     pub fee_wallet_three: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,

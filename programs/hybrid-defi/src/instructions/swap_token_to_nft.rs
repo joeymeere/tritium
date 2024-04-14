@@ -11,6 +11,8 @@ use anchor_spl::{
 use crate::error::HybridErrorCode;
 use crate::Sponsor;
 
+use crate::util::FEE_WALLETS;
+
 pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: u64) -> Result<()> {
     let sponsor = &mut ctx.accounts.sponsor;
         sponsor.nfts_held = sponsor.nfts_held.checked_sub(1).unwrap();
@@ -86,8 +88,30 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: u64) -> Result<()
                     to: ctx.accounts.fee_wallet.to_account_info(),
                 },
             ),
-            3000000,
-        )?;
+            150000,
+        )?;  
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: ctx.accounts.fee_wallet_two.to_account_info(),
+                },
+            ),
+            150000,
+        )?;  
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: ctx.accounts.fee_wallet_three.to_account_info(),
+                },
+            ),
+            300000,
+        )?;  
 
     Ok(())
 }
@@ -211,9 +235,25 @@ pub struct SwapTokenToNFT<'info> {
     pub payer: Signer<'info>,
 
     #[account(
-        mut
+        mut,
+        constraint = fee_wallet.key().to_string().as_str() == FEE_WALLETS[0]
     )]
+    /// CHECK: This isn't unsafe because I said so
     pub fee_wallet: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        constraint = fee_wallet_two.key().to_string().as_str() == FEE_WALLETS[1]
+    )]
+    /// CHECK: This isn't unsafe because I said so
+    pub fee_wallet_two: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        constraint = fee_wallet_three.key().to_string().as_str() == FEE_WALLETS[2]
+    )]
+    /// CHECK: This isn't unsafe because I said so
+    pub fee_wallet_three: AccountInfo<'info>,
     
     pub token_program: Program<'info, Token>,
     pub metadata_program: Program<'info, Metadata>,
