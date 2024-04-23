@@ -8,7 +8,7 @@ pub mod error;
 use crate::instructions::*;
 use crate::state::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("EHi6zXXbiwM2CVHosJ1jBdXWK62KHwEPEGfwCNhZTJkT");
 
 #[program]
 pub mod hybrid_defi {

@@ -56,7 +56,7 @@ pub struct InitSponsor<'info> {
             collection_mint.key().as_ref(), 
         ],
         bump,
-        space = 86
+        space = Sponsor::SPACE
     )]
     pub hybrid_vault: Account<'info, Sponsor>,
     #[account(mint::decimals = 0)]

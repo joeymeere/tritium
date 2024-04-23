@@ -148,13 +148,13 @@ pub struct SwapNFTToToken<'info> {
     pub sponsor: Account<'info, Sponsor>,
 
     #[account(mut)]
-    pub token_mint: Account<'info, token::Mint>,
+    pub token_mint: Box<Account<'info, token::Mint>>,
     #[account(
         mut,
         token::mint = sponsor.token_mint,
         token::authority = sponsor,
     )]
-    pub sponsor_token_account: Account<'info, token::TokenAccount>,
+    pub sponsor_token_account: Box<Account<'info, token::TokenAccount>>,
     #[account(
         mut,
         token::mint = sponsor.token_mint,
@@ -163,7 +163,7 @@ pub struct SwapNFTToToken<'info> {
     pub payer_token_account: Account<'info, token::TokenAccount>,
 
     #[account(mint::decimals = 0, constraint = nft_mint.supply == 1)]
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut, 
@@ -171,7 +171,7 @@ pub struct SwapNFTToToken<'info> {
         associated_token::authority = payer, 
         constraint = nft_token.amount == 1
     )]
-    pub nft_token: Account<'info, TokenAccount>,
+    pub nft_token: Box<Account<'info, TokenAccount>>,
     
     #[account(
         mut,
@@ -204,7 +204,7 @@ pub struct SwapNFTToToken<'info> {
         associated_token::mint = nft_mint, 
         associated_token::authority = nft_authority
     )]
-    pub nft_custody: Account<'info, TokenAccount>,
+    pub nft_custody: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -217,7 +217,7 @@ pub struct SwapNFTToToken<'info> {
         seeds::program = Metadata::id(),
         bump
     )]
-    pub source_token_record: Account<'info, TokenRecordAccount>,
+    pub source_token_record: Box<Account<'info, TokenRecordAccount>>,
     
     /// CHECK: account constraints checked in account trait
     #[account(

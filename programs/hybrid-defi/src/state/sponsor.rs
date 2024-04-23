@@ -13,20 +13,18 @@ pub struct Sponsor {
 }
 
 impl Sponsor {
-    pub const SEED_PREFIX: &'static str = "fundraiser";
+    pub const SEED_PREFIX: &'static str = "hybrid_defi";
 
     pub const SPACE: usize = 8 
-        + 4                         // u64
-        + 4                         // String
-        + 4                         // u64
-        + 4                         // u64
-        + 4                         // u64
-        + 1                         // u8
-        + 160                       // Vec<Pubkey> (Max 5)
-        + 32                        // Pubkey
-        + 1                         // u8
-        + 4                         // Enum (Singleton)
-        + 250;                      // Padding
+        + 32                       // u64
+        + 32                       // String
+        + 32                       // u64
+        + 4                        // u64
+        + 12                       // [u64; 3]
+        + 1                        // u8
+        + 1                        // u8
+        + 4                        // u8
+        + 250;                     // Padding
     
     pub fn new(authority: Pubkey, nft_mint: Pubkey, token_mint: Pubkey, swap_factor: [u64; 3], auth_rules_bump: u8, bump: u8, lamport_fee: u64) -> Result<Self> {
         Ok(Self {
