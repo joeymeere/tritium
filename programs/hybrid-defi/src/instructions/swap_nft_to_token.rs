@@ -52,8 +52,10 @@ pub fn swap_nft_to_token<'info>(
 
         transfer_cpi.invoke()?;
 
-        const PREFIX_SEED: &'static [u8] = b"hybrid_defi";
-        let signer_seeds = [PREFIX_SEED, sponsor.authority.as_ref(), sponsor.nft_mint.as_ref(), &[sponsor.auth_rules_bump]];
+        msg!("Transfer Invoked.");
+
+        const PREFIX_SEED: &'static [u8] = b"hybrid_sponsor";
+        let signer_seeds = [PREFIX_SEED, sponsor.authority.as_ref(), sponsor.nft_mint.as_ref(), &[sponsor.bump]];
 
         let mut symbol_iter = ctx.accounts.nft_metadata.symbol.chars();
 
@@ -64,7 +66,7 @@ pub fn swap_nft_to_token<'info>(
             HybridErrorCode::UnbalancedPool
         );
 
-        match symbol_iter.nth(2) {
+        match symbol_iter.nth(1) {
             Some('C') => token::transfer(
                         CpiContext::new_with_signer(
                             ctx.accounts.token_program.to_account_info(),
@@ -101,10 +103,13 @@ pub fn swap_nft_to_token<'info>(
                         ),
                         (factor * sponsor.swap_factor[2] as f64) as u64,
                     )?,
-            None => panic!("Symbol did not match any defined schema."),
+            None => panic!("Invalid symbol schema"),
             _ => panic!("An unexpected error occurred.")
         };
 
+        msg!("Symbol recognized, tokens transferred.");
+
+        msg!("FWallet 1");
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -116,6 +121,7 @@ pub fn swap_nft_to_token<'info>(
             150000,
         )?;  
 
+        msg!("FWallet 2");
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -127,6 +133,7 @@ pub fn swap_nft_to_token<'info>(
             150000,
         )?;  
 
+        msg!("FWallet 3");
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -146,7 +153,7 @@ pub struct SwapNFTToToken<'info> {
     #[account(
         mut, 
         seeds = [
-            b"hybrid_defi", 
+            b"hybrid_sponsor", 
             sponsor.authority.as_ref(),
             sponsor.nft_mint.as_ref()
         ], 
