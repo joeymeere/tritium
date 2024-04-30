@@ -9,10 +9,12 @@ use crate::util::FEE_WALLETS;
 
 use crate::Sponsor;
 
+use crate::error::HybridErrorCode;
+
 pub fn swap_nft_to_token<'info>(
     ctx: Context<SwapNFTToToken>,
 ) -> Result<()> {
-    let sponsor = &mut ctx.accounts.sponsor;
+        let sponsor = &mut ctx.accounts.sponsor;
         sponsor.nfts_held = sponsor.nfts_held.checked_add(1).unwrap();
 
         let mut transfer_cpi = TransferV1CpiBuilder::new(&ctx.accounts.metadata_program);
@@ -57,6 +59,11 @@ pub fn swap_nft_to_token<'info>(
 
         let factor = sponsor.swap_factor[0] as f64;
 
+        require!(
+            sponsor.swap_factor[0] * sponsor.swap_factor[2] > ctx.accounts.sponsor_token_account.amount as f64,
+            HybridErrorCode::UnbalancedPool
+        );
+
         match symbol_iter.nth(2) {
             Some('C') => token::transfer(
                         CpiContext::new_with_signer(
@@ -68,7 +75,7 @@ pub fn swap_nft_to_token<'info>(
                             },
                             &[&signer_seeds]
                         ),
-                        sponsor.swap_factor[0],
+                        sponsor.swap_factor[0] as u64,
                     )?,
             Some('R') => token::transfer(
                         CpiContext::new_with_signer(

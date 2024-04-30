@@ -8,7 +8,7 @@ pub mod error;
 use crate::instructions::*;
 use crate::state::*;
 
-declare_id!("EHi6zXXbiwM2CVHosJ1jBdXWK62KHwEPEGfwCNhZTJkT");
+declare_id!("B5KWHdNtiXtc1gS8aLobWS8hP3Xvdgi618VL81y8cw6V");
 
 #[program]
 pub mod hybrid_defi {
@@ -16,7 +16,7 @@ pub mod hybrid_defi {
 
     pub fn initialize_sponsor_pool(
         ctx: Context<InitSponsor>, 
-        swap_factor: [u64; 3], 
+        swap_factor: [f64; 3], 
         initial_balance: u64,
         lamport_fee: u64,
     ) -> Result<()> {
@@ -36,7 +36,7 @@ pub mod hybrid_defi {
 
     pub fn swap_token_to_nft(
         ctx: Context<SwapTokenToNFT>,
-        amount: u64
+        amount: f64
     ) -> Result<()> {
         instructions::swap_token_to_nft(ctx, amount)
     }

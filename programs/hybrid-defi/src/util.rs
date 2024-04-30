@@ -1,5 +1,5 @@
-pub const FEE_WALLETS: [&'static str; 3] = ["EYNsuoUh4pRCpuNqj5cH8zUDXST4o8YYqRg6vraG7Br7", "5ZnZRLxJZo6MiUBvfNQaB6aFSjNx5sv3Zib2YHHEeGQv", "ghosnnrbJRNUueziNL579JZCqvcLpdHSMXU2zn9uGJS"];
-
+pub const FEE_WALLETS: [&'static str; 3] = ["EYNsuoUh4pRCpuNqj5cH8zUDXST4o8YYqRg6vraG7Br7", "2gYS8zXHpNcJGW3ehVVGbGFdvYjfzjGdxihvAWbw3pL1", "ghosnnrbJRNUueziNL579JZCqvcLpdHSMXU2zn9uGJS"];
+pub const WL_KEYS: [&'static str; 4] = ["3nHNJd8mjZFTVkA2dPTSCnWjzJU3XvC5nGSrDMWNKpQb", "7JcUxRFYSmy2KE5ESqewAae2STTLgU5KzyVZo657iFU5", "AB83dJjfEzKsGKWpvVoEBR3jAGgbGAPccFirVV1Bh1eJ", "gho8CjpEQ6quw77oLX8ZgSrNzg7G1E7ywSPfSr6ez2N"];
 /* 
 use std::collections::HashMap;
 

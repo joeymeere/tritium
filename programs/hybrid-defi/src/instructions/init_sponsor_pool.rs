@@ -1,16 +1,22 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token::{self, Mint}};
 
-use crate::state::Sponsor;
+use crate::{state::Sponsor, util::WL_KEYS};
+use crate::error::HybridErrorCode;
 
 // Creates a "sponsor" account, and deposits 
 // initial tokens into the vault.
 pub fn init_sponsor_pool(
     ctx: Context<InitSponsor>,
-    swap_factor: [u64; 3],
+    swap_factor: [f64; 3],
     initial_balance: u64,
     lamport_fee: u64,
 ) -> Result<()> {
+    require!(
+        WL_KEYS.contains(&ctx.accounts.payer.key().to_string().as_str()), 
+        HybridErrorCode::UnauthorizedCreation
+    );
+
     ctx.accounts.hybrid_vault.set_inner(
         Sponsor::new(
             ctx.accounts.payer.key(), 

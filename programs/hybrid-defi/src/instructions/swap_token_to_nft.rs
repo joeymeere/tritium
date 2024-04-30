@@ -13,7 +13,7 @@ use crate::Sponsor;
 
 use crate::util::FEE_WALLETS;
 
-pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: u64) -> Result<()> {
+pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()> {
     let sponsor = &mut ctx.accounts.sponsor;
         sponsor.nfts_held = sponsor.nfts_held.checked_sub(1).unwrap();
 
@@ -77,7 +77,7 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: u64) -> Result<()
                 },
                 &[&signer_seeds]
             ),
-            amount,
+            amount as u64,
         )?;
 
         system_program::transfer(

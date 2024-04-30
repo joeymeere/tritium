@@ -1,9 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
 import { readFileSync } from "fs";
 import path from "path";
+import * as spl from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { Program } from "@coral-xyz/anchor";
-import { HybridDefi } from "../target/types/hybrid_defi";
 import { utf8 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import {
   Signer,
@@ -34,17 +34,15 @@ import {
 } from "@solana/spl-token";
 import { SPL_SYSTEM_PROGRAM_ID, SPL_TOKEN_PROGRAM_ID, findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
 import { assert } from "chai";
+import { HybridDefi } from "../target/types/hybrid_defi";
+import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 
-describe("hybrid-defi", async () => {
+describe("hybrid-defi", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const connection = new anchor.web3.Connection(anchor.web3.clusterApiUrl());
-
   const program = anchor.workspace.HybridDefi as Program<HybridDefi>;
-
-  console.log(connection);
 
   const umi = createUmi(anchor.AnchorProvider.env().connection.rpcEndpoint).use(
     mplTokenMetadata()
@@ -133,11 +131,11 @@ describe("hybrid-defi", async () => {
   const swapFee = new anchor.BN(0.1 * anchor.web3.LAMPORTS_PER_SOL);
 
   before(async () => {
-    console.log("Airdropping...");
+    console.log("✨ Airdropping...");
 
     await umi.rpc.airdrop(umi.payer.publicKey, sol(10));
 
-    console.log("Creating collection NFT...");
+    console.log("✨ Creating collection NFT...");
     await createNft(umi, {
       mint: collectionMint,
       name: "Test Collection",
@@ -146,12 +144,13 @@ describe("hybrid-defi", async () => {
       isCollection: true,
     }).sendAndConfirm(umi);
 
-    console.log("Creating a pNFT...");
+    console.log("✨ Creating a pNFT...");
     await createProgrammableNft(umi, {
       mint: nftMint,
       tokenOwner: umi.identity.publicKey,
       name: "Test pNFT",
       uri: "https://example.xyz",
+      symbol: "PCWN",
       sellerFeeBasisPoints: percentAmount(5),
       collection: some({ 
         key: collectionMint.publicKey, 
@@ -159,7 +158,7 @@ describe("hybrid-defi", async () => {
       }),
     }).sendAndConfirm(umi);
 
-    console.log("Verifying...");
+    console.log("✨ Verifying...");
     await verifyCollectionV1(umi, {
       metadata: nftMetadata,
       collectionMint: collectionMint.publicKey,
@@ -168,39 +167,77 @@ describe("hybrid-defi", async () => {
   });
 
   let payer = provider.wallet.publicKey;
+  let mintAuthority = anchor.web3.Keypair.generate();
 
-    const tokenMint = await createMint(
-      anchor.AnchorProvider.env().connection,
-      provider.wallet,
-      payer,
-      payer,
-      6
-    );
-
-    await mintTo(
-      anchor.AnchorProvider.env().connection,
-      payer,
-      tokenMint,
-      payer.publicKey,
-      payer.publicKey,
-      1000
-    );
-
-    const tx = await program.methods.initializeSponsorPool(
-      tokenMint,
-      nftMintPubkey,
-      new anchor.BN(1000),
-    ).accounts({
-      hybridVault: sponsorPDA,
-      collectionMint: collectionMintPubkey,
-      nftAuthority: nftAuthorityPda,
-      payer: payer.publicKey,
-      systemProgram: systemProgram
-    }).rpc();
-    console.log("Your transaction signature", tx);
+  console.log("-----Preflight initialization completed.-----");
 
   it("Swap NFT to Token", async () => {
-    const tx = await program.methods.swapNftToToken().accounts({
+    console.log("✨ Airdropping mintAuthority...");
+    await provider.connection.requestAirdrop(mintAuthority.publicKey, 4);
+    console.log("✨ Airdropping payer...");
+    await provider.connection.requestAirdrop(payer, 10);
+    console.log("✨ Airdropping initializer...");
+    const mintPayer = anchor.web3.Keypair.generate();
+    await provider.connection.requestAirdrop(mintPayer.publicKey, 10);
+
+    console.log("✨ Creating token mint...");
+    const tokenMint = await createMint(
+      anchor.AnchorProvider.env().connection,
+      mintAuthority,
+      mintAuthority.publicKey,
+      mintAuthority.publicKey,
+      6
+    );
+    console.log("✅ Token mint created:", tokenMint);
+
+    console.log("Minting 1000 tokens...");
+    await mintTo(
+      provider.connection,
+      mintPayer,
+      tokenMint,
+      payer,
+      mintAuthority.publicKey,
+      1000
+    );
+    console.log("✅ Tokens minted!");
+
+    console.log("Creating sponsor token account...");
+    let sponsorTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      mintPayer,
+      tokenMint,
+      sponsorPDA,
+      true
+    );
+
+    console.log("Creating payer token account...");
+    let payerTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      mintPayer,
+      tokenMint,
+      payer,
+      false,
+    );
+
+    console.log("Initializing pool...");
+    const poolCreate = await program.methods.initializeSponsorPool(
+      [1000, 1.5, 2],
+      new anchor.BN(1000),
+      new anchor.BN(swapFee)
+    ).accounts({
+      hybridVault: sponsorPDA,
+      tokenMint: tokenMint,
+      collectionMint: collectionMintPubkey,
+      nftAuthority: nftAuthorityPda,
+      payer: payer,
+      payerTokenAccount: payerTokenAccount.address,
+      sponsorTokenAccount: sponsorTokenAccount.address,
+      systemProgram: systemProgram
+    }).rpc();
+    console.log("✅ Pool Created", poolCreate);
+
+    console.log("Swapping...");
+    const swapNFT = await program.methods.swapNftToToken().accounts({
       sponsor: sponsorPDA,
       nftToken: nftTokenPubkey,
       nftMint: nftMint[0],
@@ -208,20 +245,21 @@ describe("hybrid-defi", async () => {
       nftAuthority: nftAuthorityPda,
       nftCustody: nftCustody,
       nftEdition: nftEditionPubkey,
-      payer: payer.publicKey,
+      payer: payer,
       systemProgram: systemProgram,
       tokenProgram: tokenProgram,
     }).rpc();
-    console.log("Your transaction signature", tx);
+    console.log("✅ NFT swapped to token", swapNFT);
 
-    assert.exists(tx);
+    assert.exists(poolCreate);
+    assert.exists(swapNFT);
   });
 
   it("Create Mint & Init Sponsor", async () => {
     const payer = anchor.web3.Keypair.generate();
 
     // Fund payer account
-    await connection.requestAirdrop(payer.publicKey, 2);
+    await provider.connection.requestAirdrop(payer.publicKey, 2);
 
     const tokenMint = await createMint(
       anchor.AnchorProvider.env().connection,
@@ -241,9 +279,9 @@ describe("hybrid-defi", async () => {
     );
 
     const tx = await program.methods.initializeSponsorPool(
-      tokenMint,
-      nftMintPubkey,
+      [1000, 1.5, 2],
       new anchor.BN(1000),
+      new anchor.BN(10000)
     ).accounts({
       hybridVault: sponsorPDA,
       collectionMint: collectionMintPubkey,
