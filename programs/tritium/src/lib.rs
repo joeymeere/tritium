@@ -11,7 +11,7 @@ use crate::state::*;
 declare_id!("B5KWHdNtiXtc1gS8aLobWS8hP3Xvdgi618VL81y8cw6V");
 
 #[program]
-pub mod hybrid_defi {
+pub mod tritium {
     use super::*;
 
     // Initializes the Sponsor PDA account

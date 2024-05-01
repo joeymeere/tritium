@@ -1,7 +1,7 @@
 [package]
-name = "hybrid-defi"
+name = "tritium"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "Swapping between pNFTs and SPL for Hybrid DeFi"
 edition = "2021"
 
 [lib]

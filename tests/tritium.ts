@@ -35,9 +35,8 @@ import {
 import { SPL_SYSTEM_PROGRAM_ID, SPL_TOKEN_PROGRAM_ID, findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
 import { assert } from "chai";
 import { HybridDefi } from "../target/types/hybrid_defi";
-import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 
-describe("hybrid-defi", () => {
+describe("tritium", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(anchor.AnchorProvider.env());
