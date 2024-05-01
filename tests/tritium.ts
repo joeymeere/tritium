@@ -140,7 +140,7 @@ describe("tritium", () => {
 
   before(async () => {
     console.log("✨ Airdropping...");
-    await provider.connection.requestAirdrop(payerKp.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL);
+    await provider.connection.requestAirdrop(payerKp.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
     await provider.connection.requestAirdrop(signerKp.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
     
     await provider.connection.requestAirdrop(new anchor.web3.PublicKey(feeWallets[0]), 5 * anchor.web3.LAMPORTS_PER_SOL);
@@ -471,6 +471,7 @@ describe("tritium", () => {
     assert.equal(nftCustodyBalance.value.uiAmount, 1)
   });
 
+  /*
   it("Swap Token to NFT", async () => {
     console.log("✨ Fetching sponsor token account...");
     let sponsorTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
@@ -519,6 +520,85 @@ describe("tritium", () => {
         units: 400_000,
       }),
     ])
+    .rpc({ skipPreflight: true });
+    console.log("✅ Token swapped to NFT! Signature:", swapNFT);
+
+    const account = await program.account.sponsor.fetch(sponsorPDA);
+    //const nftCustodyBalance =
+        //await provider.connection.getTokenAccountBalance(nftCustody);
+    //const sponsorBalance =
+        //await provider.connection.getTokenAccountBalance(sponsorTokenAccount.address);
+
+    //assert.equal(nftCustodyBalance.value.uiAmount, 0);
+    console.log("NFTs Held:", account.nftsHeld.toNumber());
+    //assert.equal(sponsorBalance.value.uiAmount, 1);
+  });
+  */
+
+  it("Swap Token to NFT with New User", async () => {
+    console.log("✨ Fetching sponsor token account...");
+    let sponsorTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      payerKp,
+      tokenMint,
+      sponsorPDA,
+      true
+    );
+
+    console.log("✨ Fetching payer token account...");
+    let newUserTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      payerKp,
+      tokenMint,
+      payerKp.publicKey,
+      false,
+    );
+
+    console.log("✨ Minting 1000 more tokens...");
+    await mintTo(
+      provider.connection,
+      signerKp,
+      tokenMint,
+      newUserTokenAccount.address,
+      signerKp.publicKey,
+      1000
+    );
+
+    console.log(`
+    SignerKp: ${signerKp.publicKey.toString()}
+    PayerKp: ${payerKp.publicKey.toString()}`
+  );
+
+    console.log("✨ Swapping...");
+    const swapNFT = await program.methods.swapTokenToNft(1).accounts({
+      sponsor: sponsorPDA,
+      tokenMint: tokenMint,
+      nftToken: nftTokenPubkey,
+      nftMint: nftMintPubkey,
+      nftMetadata: nftMetadataPubkey,
+      nftAuthority: nftAuthorityPda,
+      nftCustody: nftCustody,
+      nftEdition: nftEditionPubkey,
+      payer: payerKp.publicKey,
+      sourceTokenRecord: destinationTokenRecordPubkey,
+      destinationTokenRecord: sourceTokenRecordPubkey,
+      payerTokenAccount: newUserTokenAccount.address,
+      sponsorTokenAccount: sponsorTokenAccount.address,
+      feeWallet: new anchor.web3.PublicKey(feeWallets[0]),
+      feeWalletTwo: new anchor.web3.PublicKey(feeWallets[1]),
+      feeWalletThree: new anchor.web3.PublicKey(feeWallets[2]),
+      metadataProgram: metadataProgram,
+      systemProgram: systemProgram,
+      tokenProgram: tokenProgram,
+      associatedTokenProgram: associatedTokenProgram,
+      sysvarInstructions: sysvarInstructions,
+    })
+    .preInstructions([
+      anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
+        units: 400_000,
+      }),
+    ])
+    .signers([payerKp, signerKp])
     .rpc({ skipPreflight: true });
     console.log("✅ Token swapped to NFT! Signature:", swapNFT);
 

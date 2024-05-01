@@ -187,8 +187,8 @@ pub struct SwapNFTToToken<'info> {
 
     #[account(
         mut, 
-        associated_token::mint = nft_mint, 
-        associated_token::authority = payer, 
+        //associated_token::mint = nft_mint, 
+        //associated_token::authority = payer, 
         constraint = nft_token.amount == 1
     )]
     pub nft_token: Box<Account<'info, TokenAccount>>,

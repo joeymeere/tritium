@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_lang::solana_program::sysvar;
 use anchor_spl::token;
+use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::{
     associated_token::AssociatedToken, 
     metadata::{mpl_token_metadata::instructions::TransferV1CpiBuilder, MasterEditionAccount, Metadata, MetadataAccount, TokenRecordAccount}, 
@@ -31,6 +32,34 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         let destination_token_record = &ctx.accounts.destination_token_record.to_account_info();
         // let auth_rules_program = &ctx.accounts.auth_rules_program.to_account_info();
         // let auth_rules = &ctx.accounts.auth_rules.to_account_info();
+
+        const PREFIX_SEED: &'static [u8] = b"nft_authority";
+        let signer_seeds = [PREFIX_SEED, &sponsor.key().to_bytes(), &[sponsor.auth_rules_bump]];
+
+        msg!("NFT Custody Owner: {}", nft_custody.owner.to_string());
+        msg!("NFT Authority (expected owner): {}", ctx.accounts.nft_authority.key().to_string());
+
+        anchor_spl::token::thaw_account(CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(), 
+            anchor_spl::token::ThawAccount {
+                account: nft_custody.to_account_info(),
+                mint: nft_mint.to_account_info(),
+                authority: ctx.accounts.token_program.to_account_info()
+            }, 
+            &[&signer_seeds]
+        ))?;
+
+        anchor_spl::token::set_authority(CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(), 
+            anchor_spl::token::SetAuthority {
+                current_authority: ctx.accounts.nft_authority.to_account_info(),
+                account_or_mint: nft_custody.to_account_info(),
+            },
+            &[&signer_seeds]
+        ),
+        AuthorityType::AccountOwner,
+        Some(payer.key())
+        )?;
         
         transfer_cpi
         .token(nft_custody)
@@ -51,9 +80,6 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         // .authorization_rules_program(None)
         // .authorization_rules(None)
         .amount(1);
-
-        const PREFIX_SEED: &'static [u8] = b"nft_authority";
-        let signer_seeds = [PREFIX_SEED, &sponsor.key().to_bytes(), &[sponsor.auth_rules_bump]];
 
         transfer_cpi.invoke_signed(&[&signer_seeds])?;
 
@@ -157,8 +183,8 @@ pub struct SwapTokenToNFT<'info> {
 
     #[account(
         mut, 
-        associated_token::mint = nft_mint, 
-        associated_token::authority = payer, 
+        //associated_token::mint = nft_mint, 
+        //associated_token::authority = payer, 
         constraint = nft_token.amount == 0
     )]
     pub nft_token: Account<'info, TokenAccount>,
@@ -202,7 +228,7 @@ pub struct SwapTokenToNFT<'info> {
     #[account(
         mut,
         associated_token::mint = nft_mint, 
-        associated_token::authority = nft_authority
+        associated_token::authority = nft_authority,
     )]
     pub nft_custody: Account<'info, TokenAccount>,
 
@@ -237,7 +263,6 @@ pub struct SwapTokenToNFT<'info> {
 
     #[account(
         mut, 
-        constraint = payer.key() == sponsor.authority
     )]
     pub payer: Signer<'info>,
 
