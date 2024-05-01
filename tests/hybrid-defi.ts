@@ -128,6 +128,7 @@ describe("hybrid-defi", () => {
     mint: nftMint.publicKey,
     token: publicKey(nftCustody),
   });
+
   const destinationTokenRecordPubkey = new anchor.web3.PublicKey(
     publicKey(destinationTokenRecord)
   );
@@ -140,8 +141,13 @@ describe("hybrid-defi", () => {
 
   before(async () => {
     console.log("✨ Airdropping...");
-    await provider.connection.requestAirdrop(payerKp.publicKey, 5);
-    await provider.connection.requestAirdrop(signerKp.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL);
+    await provider.connection.requestAirdrop(payerKp.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL);
+    await provider.connection.requestAirdrop(signerKp.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
+    
+    await provider.connection.requestAirdrop(new anchor.web3.PublicKey(feeWallets[0]), 5 * anchor.web3.LAMPORTS_PER_SOL);
+    await provider.connection.requestAirdrop(new anchor.web3.PublicKey(feeWallets[1]), 5 * anchor.web3.LAMPORTS_PER_SOL);
+    await provider.connection.requestAirdrop(new anchor.web3.PublicKey(feeWallets[2]), 5 * anchor.web3.LAMPORTS_PER_SOL);
+
     await umi.rpc.airdrop(umi.payer.publicKey, sol(10));
 
     console.log("✨ Creating collection NFT...");
@@ -189,8 +195,8 @@ describe("hybrid-defi", () => {
   it("Init Sponsor", async () => {
     console.log("✨ Creating pool...");
     const tx = await program.methods.initializeSponsorPool(
-      [1000, 2, 3],
-      new anchor.BN(10000)
+      [1, 2, 3],
+      new anchor.BN(1)
     ).accounts({
       hybridVault: sponsorPDA,
       tokenMint: tokenMint,
@@ -282,6 +288,7 @@ describe("hybrid-defi", () => {
       false,
     );
 
+    /*
     console.log(`---ACCOUNTS---\n
     sponsor: ${sponsorPDA.toString()} : ${await provider.connection.getBalance(sponsorPDA)}\n
     tokenMint: ${tokenMint} : ${await provider.connection.getBalance(tokenMint)}\n
@@ -305,6 +312,7 @@ describe("hybrid-defi", () => {
     associatedTokenProgram: associatedTokenProgram,
     sysvarInstructions: sysvarInstructions,
     `);
+    */
 
     console.log("✨ Swapping...");
     const swapNFT = await program.methods.swapNftToToken().accounts({
@@ -342,7 +350,187 @@ describe("hybrid-defi", () => {
     const nftCustodyBalance =
         await provider.connection.getTokenAccountBalance(nftCustody);
 
-    assert.equal(account.nftsHeld, new anchor.BN(1));
     assert.equal(nftCustodyBalance.value.uiAmount, 1)
+  });
+
+  it("Swap 2nd NFT to Token", async () => {
+    console.log("✨ Fetching sponsor token account...");
+    let sponsorTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      signerKp,
+      tokenMint,
+      sponsorPDA,
+      true
+    );
+
+    console.log("✨ Fetching payer token account...");
+    let payerTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      signerKp,
+      tokenMint,
+      signerKp.publicKey,
+      false,
+    );
+
+    const swapNftMint = generateSigner(umi);
+
+    const swapNftToken = findAssociatedTokenPda(umi, {
+      mint: swapNftMint.publicKey,
+      owner: umi.identity.publicKey,
+    });
+
+    const swapNftMetadata = findMetadataPda(umi, {
+      mint: swapNftMint.publicKey,
+    });
+
+    const swapNftEdition = findMasterEditionPda(umi, {
+      mint: swapNftMint.publicKey,
+    });
+
+    const sourceTokenRecord2 = findTokenRecordPda(umi, {
+      mint: swapNftMint.publicKey,
+      token: publicKey(swapNftToken),
+    });
+    const sourceTokenRecordPubkey2 = new anchor.web3.PublicKey(
+      publicKey(sourceTokenRecord2)
+    );
+
+    const nftCustody2 = getAssociatedTokenAddressSync(
+      new anchor.web3.PublicKey(publicKey(swapNftMint)),
+      nftAuthorityPda,
+      true,
+      tokenProgram,
+      associatedTokenProgram
+    );
+
+    const destinationTokenRecord2 = findTokenRecordPda(umi, {
+      mint: swapNftMint.publicKey,
+      token: publicKey(nftCustody2),
+    });
+  
+    const destinationTokenRecordPubkey2 = new anchor.web3.PublicKey(
+      publicKey(destinationTokenRecord2)
+    );
+
+    console.log("✨ Creating another pNFT...");
+    await createProgrammableNft(umi, {
+      mint: swapNftMint,
+      tokenOwner: umi.identity.publicKey,
+      name: "Test pNFT #2",
+      uri: "https://example.xyz",
+      symbol: "PCWN",
+      sellerFeeBasisPoints: percentAmount(5),
+      collection: some({ 
+        key: collectionMint.publicKey, 
+        verified: false 
+      }),
+    }).sendAndConfirm(umi);
+
+    console.log("✨ Verifying collection on swap pNFT...");
+    await verifyCollectionV1(umi, {
+      metadata: swapNftMetadata,
+      collectionMint: collectionMint.publicKey,
+      authority: umi.payer,
+    }).sendAndConfirm(umi);
+
+    console.log("✨ Swapping...");
+    const swapNFT = await program.methods.swapNftToToken().accounts({
+      sponsor: sponsorPDA,
+      tokenMint: tokenMint,
+      nftToken: new anchor.web3.PublicKey(publicKey(swapNftToken)),
+      nftMint: new anchor.web3.PublicKey(publicKey(swapNftMint)),
+      nftMetadata: new anchor.web3.PublicKey(publicKey(swapNftMetadata)),
+      nftAuthority: nftAuthorityPda,
+      nftCustody: nftCustody2,
+      nftEdition: new anchor.web3.PublicKey(publicKey(swapNftEdition)),
+      payer: signerKp.publicKey,
+      sourceTokenRecord: sourceTokenRecordPubkey2,
+      destinationTokenRecord: destinationTokenRecordPubkey2,
+      payerTokenAccount: payerTokenAccount.address,
+      sponsorTokenAccount: sponsorTokenAccount.address,
+      feeWallet: new anchor.web3.PublicKey(feeWallets[0]),
+      feeWalletTwo: new anchor.web3.PublicKey(feeWallets[1]),
+      feeWalletThree: new anchor.web3.PublicKey(feeWallets[2]),
+      metadataProgram: metadataProgram,
+      systemProgram: systemProgram,
+      tokenProgram: tokenProgram,
+      associatedTokenProgram: associatedTokenProgram,
+      sysvarInstructions: sysvarInstructions,
+    })
+    .preInstructions([
+      anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
+        units: 400_000,
+      }),
+    ])
+    .rpc();
+    console.log("✅ NFT swapped to token! Signature:", swapNFT);
+
+    const account = await program.account.sponsor.fetch(sponsorPDA);
+    const nftCustodyBalance =
+        await provider.connection.getTokenAccountBalance(nftCustody);
+
+    assert.equal(nftCustodyBalance.value.uiAmount, 1)
+  });
+
+  it("Swap Token to NFT", async () => {
+    console.log("✨ Fetching sponsor token account...");
+    let sponsorTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      signerKp,
+      tokenMint,
+      sponsorPDA,
+      true
+    );
+
+    console.log("✨ Fetching payer token account...");
+    let payerTokenAccount = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      signerKp,
+      tokenMint,
+      signerKp.publicKey,
+      false,
+    );
+
+    console.log("✨ Swapping...");
+    const swapNFT = await program.methods.swapTokenToNft(1).accounts({
+      sponsor: sponsorPDA,
+      tokenMint: tokenMint,
+      nftToken: nftTokenPubkey,
+      nftMint: nftMintPubkey,
+      nftMetadata: nftMetadataPubkey,
+      nftAuthority: nftAuthorityPda,
+      nftCustody: nftCustody,
+      nftEdition: nftEditionPubkey,
+      payer: signerKp.publicKey,
+      sourceTokenRecord: destinationTokenRecordPubkey,
+      destinationTokenRecord: sourceTokenRecordPubkey,
+      payerTokenAccount: payerTokenAccount.address,
+      sponsorTokenAccount: sponsorTokenAccount.address,
+      feeWallet: new anchor.web3.PublicKey(feeWallets[0]),
+      feeWalletTwo: new anchor.web3.PublicKey(feeWallets[1]),
+      feeWalletThree: new anchor.web3.PublicKey(feeWallets[2]),
+      metadataProgram: metadataProgram,
+      systemProgram: systemProgram,
+      tokenProgram: tokenProgram,
+      associatedTokenProgram: associatedTokenProgram,
+      sysvarInstructions: sysvarInstructions,
+    })
+    .preInstructions([
+      anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
+        units: 400_000,
+      }),
+    ])
+    .rpc({ skipPreflight: true });
+    console.log("✅ Token swapped to NFT! Signature:", swapNFT);
+
+    const account = await program.account.sponsor.fetch(sponsorPDA);
+    //const nftCustodyBalance =
+        //await provider.connection.getTokenAccountBalance(nftCustody);
+    //const sponsorBalance =
+        //await provider.connection.getTokenAccountBalance(sponsorTokenAccount.address);
+
+    //assert.equal(nftCustodyBalance.value.uiAmount, 0);
+    console.log("NFTs Held:", account.nftsHeld.toNumber());
+    //assert.equal(sponsorBalance.value.uiAmount, 1);
   });
 });

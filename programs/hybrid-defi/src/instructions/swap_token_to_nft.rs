@@ -57,6 +57,7 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
 
         transfer_cpi.invoke_signed(&[&signer_seeds])?;
 
+        /*
         anchor_spl::token::close_account(CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(), 
             anchor_spl::token::CloseAccount {
@@ -66,16 +67,16 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
             },
             &[&signer_seeds]
         ))?;
+        */
 
         token::transfer(
-            CpiContext::new_with_signer(
+            CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 token::Transfer {
                     from: ctx.accounts.payer_token_account.to_account_info(),
                     to: ctx.accounts.sponsor_token_account.to_account_info(),
-                    authority: sponsor.to_account_info(),
+                    authority: payer.to_account_info(),
                 },
-                &[&signer_seeds]
             ),
             amount as u64,
         )?;
@@ -128,6 +129,12 @@ pub struct SwapTokenToNFT<'info> {
         bump = sponsor.bump
     )]
     pub sponsor: Account<'info, Sponsor>,
+
+    #[account(
+        mut,
+        constraint = token_mint.key() == sponsor.token_mint
+    )]
+    pub token_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
         mut,

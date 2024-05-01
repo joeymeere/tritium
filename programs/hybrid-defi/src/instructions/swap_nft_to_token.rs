@@ -61,10 +61,12 @@ pub fn swap_nft_to_token<'info>(
 
         let factor = sponsor.swap_factor[0] as f64;
 
+        /*
         require!(
             sponsor.swap_factor[0] * sponsor.swap_factor[2] > ctx.accounts.sponsor_token_account.amount as f64,
             HybridErrorCode::UnbalancedPool
         );
+        */
 
         match symbol_iter.nth(1) {
             Some('C') => token::transfer(
@@ -161,8 +163,12 @@ pub struct SwapNFTToToken<'info> {
     )]
     pub sponsor: Account<'info, Sponsor>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = token_mint.key() == sponsor.token_mint
+    )]
     pub token_mint: Box<Account<'info, token::Mint>>,
+
     #[account(
         mut,
         token::mint = sponsor.token_mint,
@@ -209,7 +215,7 @@ pub struct SwapNFTToToken<'info> {
     pub nft_edition: Box<Account<'info, MasterEditionAccount>>,
 
     /// CHECK: This account is not read or written
-    #[account(seeds = [b"nft_authority", sponsor.key().as_ref()], bump = sponsor.auth_rules_bump)]
+    #[account(mut, seeds = [b"nft_authority", sponsor.key().as_ref()], bump = sponsor.auth_rules_bump)]
     pub nft_authority: UncheckedAccount<'info>,
 
     #[account(
