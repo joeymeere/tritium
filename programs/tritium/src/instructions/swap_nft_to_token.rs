@@ -52,8 +52,6 @@ pub fn swap_nft_to_token<'info>(
 
         transfer_cpi.invoke()?;
 
-        msg!("Transfer Invoked.");
-
         const PREFIX_SEED: &'static [u8] = b"hybrid_sponsor";
         let signer_seeds = [PREFIX_SEED, sponsor.authority.as_ref(), sponsor.nft_mint.as_ref(), &[sponsor.bump]];
 
@@ -109,9 +107,6 @@ pub fn swap_nft_to_token<'info>(
             _ => panic!("An unexpected error occurred.")
         };
 
-        msg!("Symbol recognized, tokens transferred.");
-
-        msg!("FWallet 1");
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -120,10 +115,9 @@ pub fn swap_nft_to_token<'info>(
                     to: ctx.accounts.fee_wallet.to_account_info(),
                 },
             ),
-            150000,
+            1050000,
         )?;  
 
-        msg!("FWallet 2");
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -132,10 +126,9 @@ pub fn swap_nft_to_token<'info>(
                     to: ctx.accounts.fee_wallet_two.to_account_info(),
                 },
             ),
-            150000,
+            1050000,
         )?;  
 
-        msg!("FWallet 3");
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -144,7 +137,7 @@ pub fn swap_nft_to_token<'info>(
                     to: ctx.accounts.fee_wallet_three.to_account_info(),
                 },
             ),
-            300000,
+            2100000,
         )?;  
 
     Ok(())
@@ -187,8 +180,8 @@ pub struct SwapNFTToToken<'info> {
 
     #[account(
         mut, 
-        //associated_token::mint = nft_mint, 
-        //associated_token::authority = payer, 
+        associated_token::mint = nft_mint, 
+        associated_token::authority = payer, 
         constraint = nft_token.amount == 1
     )]
     pub nft_token: Box<Account<'info, TokenAccount>>,

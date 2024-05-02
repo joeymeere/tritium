@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token, token::{self, Mint}};
+use anchor_spl::{token::{self, Mint}};
 
 use crate::{state::Sponsor, util::WL_KEYS};
 use crate::error::HybridErrorCode;
