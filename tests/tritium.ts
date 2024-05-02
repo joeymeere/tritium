@@ -35,6 +35,9 @@ import {
 import { SPL_SYSTEM_PROGRAM_ID, SPL_TOKEN_PROGRAM_ID, findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
 import { assert } from "chai";
 import { HybridDefi } from "../target/types/hybrid_defi";
+import { initUmi } from "./utils/initUmi";
+import { associatedTokenProgram, feeWallets, metadataProgram, systemProgram, sysvarInstructions, tokenProgram } from "./utils/consts";
+import { createMintAccounts } from "./utils/createMintAccounts";
 
 describe("tritium", () => {
   // Configure the client to use the local cluster.
@@ -43,50 +46,23 @@ describe("tritium", () => {
 
   const program = anchor.workspace.HybridDefi as Program<HybridDefi>;
 
-  // Main umi instance
-  const umi = createUmi(anchor.AnchorProvider.env().connection.rpcEndpoint).use(
-    mplTokenMetadata()
-  );
-
-  // This is used for the last test "Swap Token to NFT with New User"
-  const umi2 = createUmi(anchor.AnchorProvider.env().connection.rpcEndpoint).use(
-    mplTokenMetadata()
-  );
-
   const keyFileContents = JSON.parse(
     readFileSync(
       path.join(process.env.HOME, ".config/solana/id.json")
     ).toString()
   );
 
-  // This is used for the last test "Swap Token to NFT with New User"
+  const signerKp = anchor.web3.Keypair.fromSecretKey(new Uint8Array(keyFileContents)) as anchor.web3.Keypair;
   const payerKp = anchor.web3.Keypair.generate();
 
-  const payer = umi.eddsa.createKeypairFromSecretKey(
-    new Uint8Array(payerKp.secretKey)
+  const umi = initUmi(
+    anchor.AnchorProvider.env().connection.rpcEndpoint,
+    keyFileContents
   );
 
-   const signer = umi.eddsa.createKeypairFromSecretKey(
-    new Uint8Array(keyFileContents)
-  );
-
-  let feeWallets = ["EYNsuoUh4pRCpuNqj5cH8zUDXST4o8YYqRg6vraG7Br7", "3nHNJd8mjZFTVkA2dPTSCnWjzJU3XvC5nGSrDMWNKpQb", "ghosnnrbJRNUueziNL579JZCqvcLpdHSMXU2zn9uGJS"];
-
-  const signerKp = anchor.web3.Keypair.fromSecretKey(new Uint8Array(keyFileContents)) as anchor.web3.Keypair;
-
-  umi.use(signerIdentity(createSignerFromKeypair(umi, signer)));
-  umi2.use(signerIdentity(createSignerFromKeypair(umi, payer)));
-
-  const tokenProgram = new anchor.web3.PublicKey(SPL_TOKEN_PROGRAM_ID);
-  const metadataProgram = new anchor.web3.PublicKey(
-    MPL_TOKEN_METADATA_PROGRAM_ID
-  );
-  const associatedTokenProgram = new anchor.web3.PublicKey(
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  );
-  const systemProgram = new anchor.web3.PublicKey(SPL_SYSTEM_PROGRAM_ID);
-  const sysvarInstructions = new anchor.web3.PublicKey(
-    anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY
+  const umi2 = initUmi(
+    anchor.AnchorProvider.env().connection.rpcEndpoint,
+    payerKp.secretKey
   );
 
   // Collection
@@ -97,6 +73,8 @@ describe("tritium", () => {
 
   // NFT of the collection that must be owned by the Signer
   // THIS IS OWNED BY SIGNER KP
+  //let nftAccs1 = createMintAccounts(umi);
+
   const nftMint = generateSigner(umi);
   const nftMintPubkey = new anchor.web3.PublicKey(nftMint.publicKey);
 
@@ -608,11 +586,6 @@ describe("tritium", () => {
     const sourceTokenRecordPubkey2 = new anchor.web3.PublicKey(
       publicKey(sourceTokenRecord2)
     );
-
-    console.log(`
-    SignerKp: ${signerKp.publicKey.toString()}
-    PayerKp: ${payerKp.publicKey.toString()}`
-  );
 
     console.log("✨ Swapping...");
     const swapNFT = await program.methods.swapTokenToNft(1).accounts({
