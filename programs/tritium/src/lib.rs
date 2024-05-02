@@ -8,7 +8,7 @@ pub mod error;
 use crate::instructions::*;
 use crate::state::*;
 
-declare_id!("B5KWHdNtiXtc1gS8aLobWS8hP3Xvdgi618VL81y8cw6V");
+declare_id!("FRU8neyAizvVGrB5Z2YgYZBoG76wtYT94GXWsg7Tb4Ns");
 
 #[program]
 pub mod tritium {

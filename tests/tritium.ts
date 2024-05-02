@@ -43,7 +43,13 @@ describe("tritium", () => {
 
   const program = anchor.workspace.HybridDefi as Program<HybridDefi>;
 
+  // Main umi instance
   const umi = createUmi(anchor.AnchorProvider.env().connection.rpcEndpoint).use(
+    mplTokenMetadata()
+  );
+
+  // This is used for the last test "Swap Token to NFT with New User"
+  const umi2 = createUmi(anchor.AnchorProvider.env().connection.rpcEndpoint).use(
     mplTokenMetadata()
   );
 
@@ -51,6 +57,13 @@ describe("tritium", () => {
     readFileSync(
       path.join(process.env.HOME, ".config/solana/id.json")
     ).toString()
+  );
+
+  // This is used for the last test "Swap Token to NFT with New User"
+  const payerKp = anchor.web3.Keypair.generate();
+
+  const payer = umi.eddsa.createKeypairFromSecretKey(
+    new Uint8Array(payerKp.secretKey)
   );
 
    const signer = umi.eddsa.createKeypairFromSecretKey(
@@ -62,6 +75,7 @@ describe("tritium", () => {
   const signerKp = anchor.web3.Keypair.fromSecretKey(new Uint8Array(keyFileContents)) as anchor.web3.Keypair;
 
   umi.use(signerIdentity(createSignerFromKeypair(umi, signer)));
+  umi2.use(signerIdentity(createSignerFromKeypair(umi, payer)));
 
   const tokenProgram = new anchor.web3.PublicKey(SPL_TOKEN_PROGRAM_ID);
   const metadataProgram = new anchor.web3.PublicKey(
@@ -82,6 +96,7 @@ describe("tritium", () => {
   );
 
   // NFT of the collection that must be owned by the Signer
+  // THIS IS OWNED BY SIGNER KP
   const nftMint = generateSigner(umi);
   const nftMintPubkey = new anchor.web3.PublicKey(nftMint.publicKey);
 
@@ -97,6 +112,7 @@ describe("tritium", () => {
   const nftEdition = findMasterEditionPda(umi, { mint: nftMint.publicKey });
   const nftEditionPubkey = new anchor.web3.PublicKey(publicKey(nftEdition));
 
+  // PROGRAM ACCOUNTS
   const [sponsorPDA] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("hybrid_sponsor"), program.provider.publicKey.toBuffer(), collectionMintPubkey.toBuffer()],
         program.programId
@@ -115,6 +131,7 @@ describe("tritium", () => {
     associatedTokenProgram
   );
 
+  // SIGNER KP'S RECORDS
   const sourceTokenRecord = findTokenRecordPda(umi, {
     mint: nftMint.publicKey,
     token: publicKey(nftToken),
@@ -132,9 +149,7 @@ describe("tritium", () => {
     publicKey(destinationTokenRecord)
   );
 
-  const swapFee = new anchor.BN(0.1 * anchor.web3.LAMPORTS_PER_SOL);
-
-  const payerKp = anchor.web3.Keypair.generate();
+  //const swapFee = new anchor.BN(0.1 * anchor.web3.LAMPORTS_PER_SOL);
 
   let tokenMint;
 
@@ -554,6 +569,15 @@ describe("tritium", () => {
       false,
     );
 
+    console.log("✨ Creating NFT_Token account for new user...");
+    let newUserNftToken = await spl.getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      payerKp,
+      nftMintPubkey,
+      payerKp.publicKey,
+      false,
+    );
+
     console.log("✨ Minting 1000 more tokens...");
     await mintTo(
       provider.connection,
@@ -562,6 +586,27 @@ describe("tritium", () => {
       newUserTokenAccount.address,
       signerKp.publicKey,
       1000
+    );
+
+    /*
+    // NFT ATA for new user
+    const swapNftToken = findAssociatedTokenPda(umi2, {
+      mint: nftMint.publicKey,
+      owner: umi2.identity.publicKey,
+    });
+
+    const swapNftTokenPubkey = new anchor.web3.PublicKey(
+      publicKey(swapNftToken)
+    );
+    */
+
+    // Token record for new user
+    const sourceTokenRecord2 = findTokenRecordPda(umi2, {
+      mint: nftMint.publicKey,
+      token: publicKey(newUserNftToken.address),
+    });
+    const sourceTokenRecordPubkey2 = new anchor.web3.PublicKey(
+      publicKey(sourceTokenRecord2)
     );
 
     console.log(`
@@ -573,7 +618,7 @@ describe("tritium", () => {
     const swapNFT = await program.methods.swapTokenToNft(1).accounts({
       sponsor: sponsorPDA,
       tokenMint: tokenMint,
-      nftToken: nftTokenPubkey,
+      nftToken: newUserNftToken.address,
       nftMint: nftMintPubkey,
       nftMetadata: nftMetadataPubkey,
       nftAuthority: nftAuthorityPda,
@@ -581,7 +626,7 @@ describe("tritium", () => {
       nftEdition: nftEditionPubkey,
       payer: payerKp.publicKey,
       sourceTokenRecord: destinationTokenRecordPubkey,
-      destinationTokenRecord: sourceTokenRecordPubkey,
+      destinationTokenRecord: sourceTokenRecordPubkey2,
       payerTokenAccount: newUserTokenAccount.address,
       sponsorTokenAccount: sponsorTokenAccount.address,
       feeWallet: new anchor.web3.PublicKey(feeWallets[0]),

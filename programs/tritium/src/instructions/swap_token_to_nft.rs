@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_lang::solana_program::sysvar;
+use anchor_spl::metadata::mpl_token_metadata::instructions::DelegateLockedTransferV1CpiBuilder;
 use anchor_spl::token;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::{
@@ -36,15 +37,36 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         const PREFIX_SEED: &'static [u8] = b"nft_authority";
         let signer_seeds = [PREFIX_SEED, &sponsor.key().to_bytes(), &[sponsor.auth_rules_bump]];
 
-        msg!("NFT Custody Owner: {}", nft_custody.owner.to_string());
+        //msg!("NFT Token Owner: {}", nft_token.to_string());
+        //msg!("NFT Custody Owner: {}", nft_custody.owner.to_string());
         msg!("NFT Authority (expected owner): {}", ctx.accounts.nft_authority.key().to_string());
 
+        /*
+        DelegateLockedTransferV1CpiBuilder::new(&ctx.accounts.metadata_program)
+                .delegate(payer)
+                .metadata(nft_metadata)
+                .master_edition(Some(nft_edition))
+                .token_record(Some(&ctx.accounts.source_token_record.to_account_info()))
+                .mint(&ctx.accounts.nft_mint.to_account_info())
+                .token(&ctx.accounts.nft_token.to_account_info())
+                .authority(&ctx.accounts.nft_authority.to_account_info())
+                .payer(payer)
+                .system_program(&ctx.accounts.system_program)
+                .sysvar_instructions(&ctx.accounts.sysvar_instructions)
+                .spl_token_program(Some(&ctx.accounts.token_program))
+                //.authorization_rules_program(ctx.accounts.token_auth_rules_program.as_deref())
+                //.authorization_rules(ctx.accounts.authorization_rules.as_deref())
+                .amount(1)
+                .locked_address(payer.key())
+                .invoke_signed(&[&signer_seeds])?;
+        */
+        /*
         anchor_spl::token::thaw_account(CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(), 
             anchor_spl::token::ThawAccount {
                 account: nft_custody.to_account_info(),
                 mint: nft_mint.to_account_info(),
-                authority: ctx.accounts.token_program.to_account_info()
+                authority: ctx.accounts.metadata_program.to_account_info()
             }, 
             &[&signer_seeds]
         ))?;
@@ -60,7 +82,9 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         AuthorityType::AccountOwner,
         Some(payer.key())
         )?;
+        */
         
+        msg!("Transfer ix ready...");
         transfer_cpi
         .token(nft_custody)
         .token_owner(&ctx.accounts.nft_authority)
@@ -80,6 +104,7 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         // .authorization_rules_program(None)
         // .authorization_rules(None)
         .amount(1);
+        msg!("Invoking transfer...");
 
         transfer_cpi.invoke_signed(&[&signer_seeds])?;
 
@@ -182,7 +207,8 @@ pub struct SwapTokenToNFT<'info> {
     pub nft_mint: Account<'info, Mint>,
 
     #[account(
-        mut, 
+        //init_if_needed, 
+        //payer = payer,
         //associated_token::mint = nft_mint, 
         //associated_token::authority = payer, 
         constraint = nft_token.amount == 0

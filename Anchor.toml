@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-hybrid_defi = "B5KWHdNtiXtc1gS8aLobWS8hP3Xvdgi618VL81y8cw6V"
+hybrid_defi = "FRU8neyAizvVGrB5Z2YgYZBoG76wtYT94GXWsg7Tb4Ns"
 [programs.devnet]
 hybrid_defi = "B5KWHdNtiXtc1gS8aLobWS8hP3Xvdgi618VL81y8cw6V"
 
