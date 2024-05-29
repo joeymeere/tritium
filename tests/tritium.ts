@@ -34,7 +34,7 @@ import {
 } from "@solana/spl-token";
 import { SPL_SYSTEM_PROGRAM_ID, SPL_TOKEN_PROGRAM_ID, findAssociatedTokenPda } from "@metaplex-foundation/mpl-toolbox";
 import { assert } from "chai";
-import { HybridDefi } from "../target/types/hybrid_defi";
+import { Tritium } from "../target/types/tritium";
 import { initUmi } from "./utils/initUmi";
 import { associatedTokenProgram, feeWallets, metadataProgram, systemProgram, sysvarInstructions, tokenProgram } from "./utils/consts";
 import { createMintAccounts } from "./utils/createMintAccounts";
@@ -44,7 +44,7 @@ describe("tritium", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.HybridDefi as Program<HybridDefi>;
+  const program = anchor.workspace.HybridDefi as Program<Tritium>;
 
   const keyFileContents = JSON.parse(
     readFileSync(
@@ -82,6 +82,7 @@ describe("tritium", () => {
     mint: nftMint.publicKey,
     owner: umi.identity.publicKey,
   });
+
   const nftTokenPubkey = new anchor.web3.PublicKey(publicKey(nftToken));
 
   const nftMetadata = findMetadataPda(umi, { mint: nftMint.publicKey });
@@ -616,7 +617,7 @@ describe("tritium", () => {
         units: 400_000,
       }),
     ])
-    .signers([payerKp, signerKp])
+    .signers([payerKp])
     .rpc({ skipPreflight: true });
     console.log("✅ Token swapped to NFT! Signature:", swapNFT);
 

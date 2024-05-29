@@ -13,12 +13,16 @@ use crate::Sponsor;
 
 use crate::util::FEE_WALLETS;
 
-pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()> {
+pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>) -> Result<()> {
     let sponsor = &mut ctx.accounts.sponsor;
-        sponsor.nfts_held = sponsor.nfts_held.checked_sub(1).unwrap();
+        msg!("Deducting NFT balance");
+        sponsor.nfts_held -= 1;
 
-        require!(amount == sponsor.swap_factor[0], HybridErrorCode::InsufficientTokens);
+        msg!("Nft custody authority: {:?}", ctx.accounts.nft_custody.delegate);
 
+        //require!(amount == sponsor.swap_factor[0], HybridErrorCode::InsufficientTokens);
+
+        msg!("Initializing CPI builder");
         let mut transfer_cpi = TransferV1CpiBuilder::new(&ctx.accounts.metadata_program);
 
         let nft_token = &ctx.accounts.nft_token.to_account_info();
@@ -29,13 +33,14 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         let nft_edition = &ctx.accounts.nft_edition.to_account_info();
         let source_token_record = &ctx.accounts.source_token_record.to_account_info();
         let destination_token_record = &ctx.accounts.destination_token_record.to_account_info();
-        // let auth_rules_program = &ctx.accounts.auth_rules_program.to_account_info();
-        // let auth_rules = &ctx.accounts.auth_rules.to_account_info();
+        let auth_rules_program = &ctx.accounts.auth_rules_program.to_account_info();
+        let auth_rules = &ctx.accounts.auth_rules.to_account_info();
 
+        msg!("Creating signer seeds");
         const PREFIX_SEED: &'static [u8] = b"nft_authority";
         let signer_seeds = [PREFIX_SEED, &sponsor.key().to_bytes(), &[sponsor.auth_rules_bump]];
-
         
+        msg!("Executing CPI");
         transfer_cpi
         .token(nft_custody)
         .token_owner(&ctx.accounts.nft_authority)
@@ -52,12 +57,14 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
         .sysvar_instructions(&ctx.accounts.sysvar_instructions)
         .spl_token_program(&ctx.accounts.token_program)
         .spl_ata_program(&ctx.accounts.associated_token_program)
-        // .authorization_rules_program(None)
-        // .authorization_rules(None)
+        .authorization_rules_program(Some(auth_rules_program))
+        .authorization_rules(Some(auth_rules))
         .amount(1);
 
+        msg!("Invoking");
         transfer_cpi.invoke_signed(&[&signer_seeds])?;
 
+        msg!("Closing Account");
         anchor_spl::token::close_account(CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(), 
             anchor_spl::token::CloseAccount {
@@ -77,7 +84,7 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>, amount: f64) -> Result<()
                     authority: payer.to_account_info(),
                 },
             ),
-            amount as u64,
+            sponsor.swap_factor[0] as u64,
         )?;
 
         system_program::transfer(
@@ -124,6 +131,7 @@ pub struct SwapTokenToNFT<'info> {
             b"hybrid_sponsor", 
             sponsor.authority.key().as_ref(),
             sponsor.nft_mint.key().as_ref(), 
+            sponsor.name.as_ref(),
         ], 
         bump = sponsor.bump
     )]
@@ -271,4 +279,12 @@ pub struct SwapTokenToNFT<'info> {
         address = sysvar::instructions::id()
     )]
     pub sysvar_instructions: UncheckedAccount<'info>,
+
+    /// CHECK: account constraints checked in account trait
+    #[account(address = mpl_token_auth_rules::id())]
+    pub auth_rules_program: UncheckedAccount<'info>,
+
+    /// CHECK: account constraints checked in account trait
+    #[account(owner = mpl_token_auth_rules::id())]
+    pub auth_rules: UncheckedAccount<'info>,
 }

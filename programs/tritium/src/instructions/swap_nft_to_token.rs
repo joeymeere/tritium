@@ -9,13 +9,11 @@ use crate::util::FEE_WALLETS;
 
 use crate::Sponsor;
 
-use crate::error::HybridErrorCode;
-
 pub fn swap_nft_to_token<'info>(
     ctx: Context<SwapNFTToToken>,
 ) -> Result<()> {
         let sponsor = &mut ctx.accounts.sponsor;
-        sponsor.nfts_held = sponsor.nfts_held.checked_add(1).unwrap();
+        sponsor.nfts_held += 1;
 
         let mut transfer_cpi = TransferV1CpiBuilder::new(&ctx.accounts.metadata_program);
 
@@ -27,8 +25,8 @@ pub fn swap_nft_to_token<'info>(
         let nft_edition = &ctx.accounts.nft_edition.to_account_info();
         let source_token_record = &ctx.accounts.source_token_record.to_account_info();
         let destination_token_record = &ctx.accounts.destination_token_record.to_account_info();
-        // let auth_rules_program = &ctx.accounts.auth_rules_program.to_account_info();
-        // let auth_rules = &ctx.accounts.auth_rules.to_account_info();
+        let auth_rules_program = &ctx.accounts.auth_rules_program.to_account_info();
+        let auth_rules = &ctx.accounts.auth_rules.to_account_info();
         
         transfer_cpi
         .token(nft_token)
@@ -46,27 +44,36 @@ pub fn swap_nft_to_token<'info>(
         .sysvar_instructions(&ctx.accounts.sysvar_instructions)
         .spl_token_program(&ctx.accounts.token_program)
         .spl_ata_program(&ctx.accounts.associated_token_program)
-        // .authorization_rules_program(None)
-        // .authorization_rules(None)
+        .authorization_rules_program(Some(auth_rules_program))
+        .authorization_rules(Some(auth_rules))
         .amount(1);
 
         transfer_cpi.invoke()?;
 
         const PREFIX_SEED: &'static [u8] = b"hybrid_sponsor";
-        let signer_seeds = [PREFIX_SEED, sponsor.authority.as_ref(), sponsor.nft_mint.as_ref(), &[sponsor.bump]];
+        let signer_seeds = [
+            PREFIX_SEED, 
+            sponsor.authority.as_ref(), 
+            sponsor.nft_mint.as_ref(), 
+            sponsor.name.as_ref(), 
+            &[sponsor.bump]
+        ];
 
         let mut symbol_iter = ctx.accounts.nft_metadata.symbol.chars();
 
-        let factor = sponsor.swap_factor[0] as f64;
+        let factor = sponsor.swap_factor[0];
+        let rare = (factor * sponsor.swap_factor[1]) as u64;
+        let legend = (factor * sponsor.swap_factor[2]) as u64;
 
-        /*
-        require!(
-            sponsor.swap_factor[0] * sponsor.swap_factor[2] > ctx.accounts.sponsor_token_account.amount as f64,
-            HybridErrorCode::UnbalancedPool
-        );
-        */
+        let x = (legend as f64 * 1.1) as u64;
+        let y = (legend as f64 * 1.15) as u64;
+        let z = (legend as f64 * 1.2) as u64;
 
-        match symbol_iter.nth(1) {
+        let identifier = symbol_iter.nth(1);
+
+        msg!("Token Symbol: {:?}", identifier);
+
+        match identifier {
             Some('C') => token::transfer(
                         CpiContext::new_with_signer(
                             ctx.accounts.token_program.to_account_info(),
@@ -89,7 +96,7 @@ pub fn swap_nft_to_token<'info>(
                             },
                             &[&signer_seeds]
                         ),
-                        (factor * sponsor.swap_factor[1] as f64) as u64,
+                        rare,
                     )?,
             Some('L') => token::transfer(
                         CpiContext::new_with_signer(
@@ -101,11 +108,78 @@ pub fn swap_nft_to_token<'info>(
                             },
                             &[&signer_seeds]
                         ),
-                        (factor * sponsor.swap_factor[2] as f64) as u64,
+                        legend,
                     )?,
-            None => panic!("Invalid symbol schema"),
-            _ => panic!("An unexpected error occurred.")
+            Some('X') => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        x,
+                    )?,
+            Some('Y') => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        y,
+                    )?,
+            Some('Z') => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        z,
+                    )?,
+            None => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        factor as u64,
+                    )?,
+            _ => token::transfer(
+                        CpiContext::new_with_signer(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.sponsor_token_account.to_account_info(),
+                                to: ctx.accounts.payer_token_account.to_account_info(),
+                                authority: sponsor.to_account_info(),
+                            },
+                            &[&signer_seeds]
+                        ),
+                        factor as u64,
+                    )?
         };
+
+        anchor_spl::token::close_account(CpiContext::new(
+            ctx.accounts.token_program.to_account_info(), 
+            anchor_spl::token::CloseAccount {
+                account: nft_token.to_account_info(),
+                destination: payer.to_account_info(),
+                authority: payer.to_account_info()
+            },
+        ))?;
 
         system_program::transfer(
             CpiContext::new(
@@ -150,7 +224,8 @@ pub struct SwapNFTToToken<'info> {
         seeds = [
             b"hybrid_sponsor", 
             sponsor.authority.as_ref(),
-            sponsor.nft_mint.as_ref()
+            sponsor.nft_mint.as_ref(),
+            sponsor.name.as_ref(),
         ], 
         bump = sponsor.bump
     )]
@@ -279,11 +354,11 @@ pub struct SwapNFTToToken<'info> {
     #[account(address = sysvar::instructions::id())]
     pub sysvar_instructions: UncheckedAccount<'info>,
 
-    // /// CHECK: account constraints checked in account trait
-    // #[account(address = mpl_token_auth_rules::id())]
-    // pub auth_rules_program: UncheckedAccount<'info>,
+    /// CHECK: account constraints checked in account trait
+    #[account(address = mpl_token_auth_rules::id())]
+    pub auth_rules_program: UncheckedAccount<'info>,
 
-    // /// CHECK: account constraints checked in account trait
-    // #[account(owner = mpl_token_auth_rules::id())]
-    // pub auth_rules: UncheckedAccount<'info>,
+    /// CHECK: account constraints checked in account trait
+    #[account(owner = mpl_token_auth_rules::id())]
+    pub auth_rules: UncheckedAccount<'info>,
 }

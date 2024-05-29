@@ -5,13 +5,15 @@ skip-lint = false
 [programs.localnet]
 hybrid_defi = "FRU8neyAizvVGrB5Z2YgYZBoG76wtYT94GXWsg7Tb4Ns"
 [programs.devnet]
-hybrid_defi = "B5KWHdNtiXtc1gS8aLobWS8hP3Xvdgi618VL81y8cw6V"
+hybrid_defi = "AoFwcQnifpNDKrZeaTCDBNuvciXq5parfUJuhvojd5x7"
+[programs.mainnet]
+hybrid_defi = "FRU8neyAizvVGrB5Z2YgYZBoG76wtYT94GXWsg7Tb4Ns"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "http://localhost:8899"
+cluster = "devnet"
 wallet = "/Users/joeymeere/.config/solana/id.json"
 
 [[test.validator.clone]]

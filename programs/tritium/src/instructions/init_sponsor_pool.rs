@@ -8,18 +8,18 @@ use crate::error::HybridErrorCode;
 // initial tokens into the vault.
 pub fn init_sponsor_pool(
     ctx: Context<InitSponsor>,
-    swap_factor: [f64; 3],
+    name: String,
+    swap_factor: [f64; 3], // index 1: baseline (1000 tokens), index 2: rare mul, index 3: legend mul
     lamport_fee: u64,
 ) -> Result<()> {
-    /*
     require!(
         WL_KEYS.contains(&ctx.accounts.payer.key().to_string().as_str()), 
         HybridErrorCode::UnauthorizedCreation
     );
-    */
 
     ctx.accounts.hybrid_vault.set_inner(
         Sponsor::new(
+            name,
             ctx.accounts.payer.key(), 
             ctx.accounts.collection_mint.key(),
             ctx.accounts.token_mint.key(),
@@ -34,6 +34,7 @@ pub fn init_sponsor_pool(
 }
 
 #[derive(Accounts)]
+#[instruction(name: String)]
 pub struct InitSponsor<'info> {
     #[account(
         init,
@@ -42,6 +43,7 @@ pub struct InitSponsor<'info> {
             b"hybrid_sponsor", 
             payer.key().as_ref(),
             collection_mint.key().as_ref(), 
+            name.as_ref(),
         ],
         bump,
         space = Sponsor::SPACE

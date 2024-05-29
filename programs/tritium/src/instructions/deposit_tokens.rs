@@ -43,8 +43,9 @@ pub struct DepositTokens<'info> {
         mut,
         seeds = [
             b"hybrid_sponsor", 
-            payer.key().as_ref(),
-            collection_mint.key().as_ref(), 
+            hybrid_vault.authority.as_ref(),
+            hybrid_vault.nft_mint.key().as_ref(), 
+            hybrid_vault.name.as_ref(),
         ],
         bump,
     )]

@@ -8,7 +8,7 @@ pub mod error;
 use crate::instructions::*;
 use crate::state::*;
 
-declare_id!("FRU8neyAizvVGrB5Z2YgYZBoG76wtYT94GXWsg7Tb4Ns");
+declare_id!("AoFwcQnifpNDKrZeaTCDBNuvciXq5parfUJuhvojd5x7");
 
 #[program]
 pub mod tritium {
@@ -17,11 +17,13 @@ pub mod tritium {
     // Initializes the Sponsor PDA account
     pub fn initialize_sponsor_pool(
         ctx: Context<InitSponsor>, 
+        name: String,
         swap_factor: [f64; 3], 
         lamport_fee: u64,
     ) -> Result<()> {
         instructions::init_sponsor_pool(
             ctx, 
+            name,
             swap_factor, 
             lamport_fee
         )
@@ -48,8 +50,8 @@ pub mod tritium {
     // Swaps SPL to pNFT based on "swap_factor[0]"
     pub fn swap_token_to_nft(
         ctx: Context<SwapTokenToNFT>,
-        amount: f64
+        //amount: f64
     ) -> Result<()> {
-        instructions::swap_token_to_nft(ctx, amount)
+        instructions::swap_token_to_nft(ctx)
     }
 }

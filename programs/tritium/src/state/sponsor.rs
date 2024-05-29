@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct Sponsor {
+    pub name: String,
     pub authority: Pubkey,
     pub nft_mint: Pubkey,
     pub token_mint: Pubkey,
@@ -27,6 +28,7 @@ impl Sponsor {
         + 650;                     // Padding
     
     pub fn new(
+        name: String,
         authority: Pubkey, 
         nft_mint: Pubkey, 
         token_mint: Pubkey, 
@@ -36,6 +38,7 @@ impl Sponsor {
         lamport_fee: u64
     ) -> Result<Self> {
         Ok(Self {
+            name,
             authority,
             nft_mint,
             token_mint,
