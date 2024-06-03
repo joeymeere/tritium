@@ -8,21 +8,16 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount}
 };
 
-use crate::error::HybridErrorCode;
 use crate::Sponsor;
 
 use crate::util::FEE_WALLETS;
 
 pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>) -> Result<()> {
     let sponsor = &mut ctx.accounts.sponsor;
-        msg!("Deducting NFT balance");
         sponsor.nfts_held -= 1;
-
-        msg!("Nft custody authority: {:?}", ctx.accounts.nft_custody.delegate);
 
         //require!(amount == sponsor.swap_factor[0], HybridErrorCode::InsufficientTokens);
 
-        msg!("Initializing CPI builder");
         let mut transfer_cpi = TransferV1CpiBuilder::new(&ctx.accounts.metadata_program);
 
         let nft_token = &ctx.accounts.nft_token.to_account_info();
@@ -36,11 +31,9 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>) -> Result<()> {
         let auth_rules_program = &ctx.accounts.auth_rules_program.to_account_info();
         let auth_rules = &ctx.accounts.auth_rules.to_account_info();
 
-        msg!("Creating signer seeds");
         const PREFIX_SEED: &'static [u8] = b"nft_authority";
         let signer_seeds = [PREFIX_SEED, &sponsor.key().to_bytes(), &[sponsor.auth_rules_bump]];
         
-        msg!("Executing CPI");
         transfer_cpi
         .token(nft_custody)
         .token_owner(&ctx.accounts.nft_authority)
@@ -61,10 +54,8 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>) -> Result<()> {
         .authorization_rules(Some(auth_rules))
         .amount(1);
 
-        msg!("Invoking");
         transfer_cpi.invoke_signed(&[&signer_seeds])?;
 
-        msg!("Closing Account");
         anchor_spl::token::close_account(CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(), 
             anchor_spl::token::CloseAccount {
@@ -75,17 +66,110 @@ pub fn swap_token_to_nft(ctx: Context<SwapTokenToNFT>) -> Result<()> {
             &[&signer_seeds]
         ))?;
 
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                token::Transfer {
-                    from: ctx.accounts.payer_token_account.to_account_info(),
-                    to: ctx.accounts.sponsor_token_account.to_account_info(),
-                    authority: payer.to_account_info(),
-                },
-            ),
-            sponsor.swap_factor[0] as u64,
-        )?;
+        let mut symbol_iter = ctx.accounts.nft_metadata.symbol.chars();
+
+        let factor = sponsor.swap_factor[0];
+        let rare = (factor * sponsor.swap_factor[1]) as u64;
+        let legend = (factor * sponsor.swap_factor[2]) as u64;
+
+        let x = (legend as f64 * 1.1) as u64;
+        let y = (legend as f64 * 1.15) as u64;
+        let z = (legend as f64 * 1.2) as u64;
+
+        let identifier = symbol_iter.nth(1);
+
+        msg!("Token Symbol: {:?}", identifier);
+
+        match identifier {
+            Some('C') => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        sponsor.swap_factor[0] as u64,
+                    )?,
+            Some('R') => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        rare,
+                    )?,
+            Some('L') => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        legend,
+                    )?,
+            Some('X') => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        x,
+                    )?,
+            Some('Y') => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        y,
+                    )?,
+            Some('Z') => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        z,
+                    )?,
+            None => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        factor as u64,
+                    )?,
+            _ => token::transfer(
+                        CpiContext::new(
+                            ctx.accounts.token_program.to_account_info(),
+                            token::Transfer {
+                                from: ctx.accounts.payer_token_account.to_account_info(),
+                                to: ctx.accounts.sponsor_token_account.to_account_info(),
+                                authority: payer.to_account_info(),
+                            },
+                        ),
+                        factor as u64,
+                    )?
+        };
 
         system_program::transfer(
             CpiContext::new(
